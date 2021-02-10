@@ -19,17 +19,15 @@ class HelloCommand extends UserCommand
         $message = $this->getMessage();
         $chat_id = $message->getChat()->getId();
         $user_id = $message->getFrom()->getId();
-	$first_name = $message->getFrom()->getFirstName();
-	$text = $message->getText();
-	
-		
-	$data = [
-		'chat_id' => $chat_id,
-		'text' => 'Welcome ' . $first_name . ",please first type your IIN number: ",
-	];	
-		
-	
-	return Request::sendMessage($data);
+        $first_name = $message->getFrom()->getFirstName();
+        $text = $message->getText();
 
-     }
+
+        $data = [
+            'chat_id' => $chat_id,
+            'text' => 'Welcome ' . $first_name . ",please first type your IIN number: ",
+        ];
+        return Request::sendMessage($data);
+
+    }
 }

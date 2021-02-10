@@ -32,7 +32,7 @@ class Conversation
      * Notes stored inside the conversation
      *
      * @var mixed
-     */
+     */ 
     protected $protected_notes;
 
     /**
