@@ -7,6 +7,6 @@ Telegram bot for working with clients
 
 ### Clone
 ```
-git clone gitlab.com/iamaaidynuly/currency_api
+git clone gitlab.com/iamaaidynuly/
 
 ```
