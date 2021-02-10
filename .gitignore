@@ -1,5 +1,4 @@
 .idea/
 ssc
 vendor
-composer.phar
 composer.lock
