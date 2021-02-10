@@ -1,6 +1,6 @@
 ### Overview 
-Telegram bot for working with clients
-t.me/avtoadv_bot
+Telegram **bot** for working with clients.
+[Link](t.me/avtoadv_bot)
 
 ### Stacks
 1. PHP
