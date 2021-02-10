@@ -14,7 +14,6 @@ return [
             __DIR__ . '/Commands',
         ],
         'configs' => [
-
         ],
     ],
 

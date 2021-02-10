@@ -3,3 +3,4 @@ ssc
 vendor
 composer.phar
 composer.lock
+.sql

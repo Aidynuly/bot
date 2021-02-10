@@ -7,7 +7,7 @@ $config = require __DIR__ . '/config.php';
 try{
     $telegram = new Longman\TelegramBot\Telegram($config['api_key'], $config['bot_username']);
 
-    $result = $telegram->setWebhook($config['webhook']['url'], ['certificate' => $config['webhook']['certificate']]);
+    $result = $telegram->setWebhook($config['webhook']['url']);
     if ($result->isOk()){
         echo $result->getDescription();
     }
