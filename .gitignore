@@ -1,3 +1,5 @@
 .idea/
-.ssc/
-.vendor/
+ssc
+vendor
+composer.phar
+composer.lock
