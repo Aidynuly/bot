@@ -89,7 +89,7 @@ class SurveyCommand extends UserCommand
         ];
 
         if ($chat->isGroupChat() || $chat->isSuperGroup()) {
-            // Force reply is applied by default so it can work with privacy on
+            // Force reply is applied by default w it can work with privacy on
             $data['reply_markup'] = Keyboard::forceReply(['selective' => true]);
         }
 

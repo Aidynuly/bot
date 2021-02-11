@@ -14,11 +14,12 @@ return [
             __DIR__ . '/Commands',
         ],
         'configs' => [
+
         ],
     ],
 
     'mysql' => [
-        'host' => '127.0.0.1',
+        'host' => 'localhost',
         'user' => 'v-2905_telegram_bot',
         'password' => 'sQx8j2$3',
         'database' => 'v-2905_telegram_bot',

@@ -17,11 +17,12 @@ class StartCommand extends UserCommand
         $message = $this->getMessage();
         $chat_id = $message->getChat()->getId();
         $user_id = $message->getFrom()->getId();
-	$data = [
-		'chat_id' => $chat_id,
-		'text' => 'test ',
-            		
-	];
+        $text = $message->getText();
+        $data = [
+            'chat_id' => $chat_id,
+            'text' => "smth",
+
+        ];
         return Request::sendMessage($data);
     }
 }
