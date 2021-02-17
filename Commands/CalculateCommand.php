@@ -2,7 +2,9 @@
 
 namespace Longman\TelegramBot\Commands\UserCommands;
 
+use App\Calculator;
 use App\Translation;
+use App\Validator;
 use Longman\TelegramBot\Commands\UserCommand;
 use Longman\TelegramBot\Conversation;
 use Longman\TelegramBot\Entities\Keyboard;
@@ -10,26 +12,22 @@ use Longman\TelegramBot\Entities\ServerResponse;
 use Longman\TelegramBot\Request;
 
 
-/**
- * Class StartCommand
- * @package Longman\TelegramBot\Commands\UserCommands
- */
-class StartCommand extends UserCommand
+class CalculateCommand extends UserCommand
 {
     /**
      * @var string
      */
-    protected $name = 'start';
+    protected $name = 'calculate';
 
     /**
      * @var string
      */
-    protected $description = 'Start command';
+    protected $description = 'Calculate command';
 
     /**
      * @var string
      */
-    protected $usage = '/start';
+    protected $usage = '/calculate';
 
     /**
      * @var string
@@ -77,48 +75,66 @@ class StartCommand extends UserCommand
 
         switch ($state) {
             case 0:
-                if ($text === '/start' || $text === '') {
+                if ($text === $translation['ru']['yes'] || $text === $translation['kz']['yes'] || $text === '') {
+                    $notes['lang'] = $text === $translation['ru']['yes'] ? 'ru' : 'kz';
+
                     $notes['state'] = 0;
                     $this->conversation->update();
 
-                    $data['text'] = 'Выберите язык/Тілді таңдаңыз';
-                    $data['reply_markup'] = (new Keyboard('Русский', 'Қазақ'))
-                        ->setResizeKeyboard(true)
-                        ->setOneTimeKeyboard(true)
-                        ->setSelective(true);
+                    $data['text'] = $translation[$notes['lang']]['iin_question'];
 
                     $result = Request::sendMessage($data);
                     break;
                 }
 
-                $notes['chosen_lang'] = $text;
+                if (!in_array($text, [
+                        $translation['ru']['yes'],
+                        $translation['kz']['yes'],
+                        ''
+                    ]) && !Validator::validateIIN($text)) {
+                    $notes['state'] = 0;
+                    $this->conversation->update();
+
+                    $data['text'] = $translation[$notes['lang']]['iin_error']
+                        .PHP_EOL
+                        .$translation[$notes['lang']]['try_again']
+                    ;
+
+                    $result = Request::sendMessage($data);
+                    break;
+                }
+
+                $notes['iin'] = $text;
                 $text = '';
 
             case 1:
                 if ($text === '') {
                     $notes['state'] = 1;
                     $this->conversation->update();
-                    $lang = $notes['chosen_lang'] === 'Русский' ? 'ru' : 'kz';
-                    $data['text'] = $translation[$lang]['greeting']
-                        .PHP_EOL
-                        .$translation[$lang]['notice']
-                    ;
-                    $data['reply_markup'] = (new Keyboard($translation[$lang]['yes']))
-                        ->setResizeKeyboard(true)
-                        ->setOneTimeKeyboard(true)
-                        ->setSelective(true);
+
+                    $data['text'] = $translation[$notes['lang']]['vehicle_question'];
 
                     $result = Request::sendMessage($data);
                     break;
                 }
 
-                $notes['answer'] = $text;
+                $notes['vehicle'] = $text;
                 $text = '';
 
             case 2:
-                unset($notes['state']);
-                $this->conversation->stop();
-                $this->telegram->executeCommand('calculate');
+                if ($text === '') {
+
+                    $calculator = new Calculator($notes['iin'], $notes['vehicle']);
+                    $result = $calculator->getPolicyPrice();
+
+                    $data['text'] = $translation[$notes['lang']]['answer']." $result ₸";
+                    $result = Request::sendMessage($data);
+
+                    unset($notes['state']);
+                    $this->conversation->stop;
+
+                    break;
+                }
         }
 
         return $result;

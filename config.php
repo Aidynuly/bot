@@ -1,12 +1,18 @@
 <?php
+require_once "vendor/autoload.php";
+
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+$dotenv->load();
+
+// curl -X POST -F 'url=https://f6c42add08fb.ngrok.io/hook.php' https://api.telegram.org/bot1675108722:AAHiNI6dsRMwic6paMNpBFLv4J8MzfxM5Go/setWebhook
 
 return [
-    'api_key' => '1675108722:AAHiNI6dsRMwic6paMNpBFLv4J8MzfxM5Go',
-    'bot_username' => 'avtoadv_bot',
+    'api_key' => $_ENV['BOT_API_KEY'],
+    'bot_username' => $_ENV['BOT_USERNAME'],
     'secret' => 'supersecret',
 
     'webhook' => [
-        'url' => 'https://telegram.avtoadvokat.kz/hook.php',
+        'url' => $_ENV['WEBHOOK'],
     ],
 
     'commands' => [
@@ -19,10 +25,10 @@ return [
     ],
 
     'mysql' => [
-        'host' => 'localhost',
-        'user' => 'v-2905_telegram_bot',
-        'password' => 'sQx8j2$3',
-        'database' => 'v-2905_telegram_bot',
+        'host' => $_ENV['DB_HOST'],
+        'user' => $_ENV['DB_USER'],
+        'password' => $_ENV['DB_PASSWORD'],
+        'database' => $_ENV['DB_NAME']
     ],
 
     'paths' => [
