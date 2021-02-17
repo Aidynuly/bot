@@ -32,3 +32,6 @@ tests/_support/_generated
 
 # environment vars
 /.env
+
+# logs
+/php-error.log
