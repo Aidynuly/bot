@@ -31,4 +31,4 @@ tests/_support/_generated
 .tmp
 
 # environment vars
-.env
+/.env
