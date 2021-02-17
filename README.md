@@ -17,7 +17,7 @@ Telegram **bot** that calculates policy sum for Kazakhstan citizens
 
 - clone project
 ```bash
-$ git clonegit@gitlab.com:rocketfirm/exclusive-qurylys-backend.git
+$ git clone git@gitlab.com:iamaaidynuly/tlg_bot.git
 ```
 - install dependencies via composer
 ```bash
