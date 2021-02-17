@@ -4,8 +4,6 @@ require_once "vendor/autoload.php";
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
-// curl -X POST -F 'url=https://f6c42add08fb.ngrok.io/hook.php' https://api.telegram.org/bot1675108722:AAHiNI6dsRMwic6paMNpBFLv4J8MzfxM5Go/setWebhook
-
 return [
     'api_key' => $_ENV['BOT_API_KEY'],
     'bot_username' => $_ENV['BOT_USERNAME'],
