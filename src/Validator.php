@@ -17,7 +17,17 @@ class Validator
      */
     public static function validateIIN(string $iin) : bool
     {
-        return mb_strlen($iin) === 12;
+        if (is_numeric($iin)) {
+            if (mb_strlen($iin) === 12) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+        else {
+            return false;
+        }
     }
 
     /**
@@ -27,6 +37,13 @@ class Validator
      */
     public static function validateVehicleNumber(string $number) : bool
     {
+        $onlyDigits = preg_replace('/[^0-9]/', '', $number);
+        if (strlen($number) > 8) {
+            return false;
+        }
+        if (strlen($onlyDigits) > 5 || strlen($onlyDigits) <= 3) {
+            return false;
+        }
         return true;
     }
 }

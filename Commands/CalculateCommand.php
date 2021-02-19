@@ -118,13 +118,30 @@ class CalculateCommand extends UserCommand
                     break;
                 }
 
-                $notes['vehicle'] = $text;
+                $notes['vehicle'] = strtoupper($text);
                 $text = '';
 
             case 2:
                 if ($text === '') {
+                    $notes['state'] = 2;
+                    $this->conversation->update();
+                    $data['text'] = 'Выберите стаж вождения/Жүргізу тәжірибесін таңдаңыз';
+                    $data['reply_markup'] = (new Keyboard('Меньше 2 лет','Больше 2 лет'))
+                        ->setResizeKeyboard(true)
+                        ->setOneTimeKeyboard(true)
+                        ->setSelective(true);
 
-                    $calculator = new Calculator($notes['iin'], $notes['vehicle']);
+                    $result = Request::sendMessage($data);
+                    break;
+                }
+
+                $notes['chosen_experience'] = $text;
+                $text = '';
+
+            case 3:
+                if ($text === '') {
+
+                    $calculator = new Calculator($notes['iin'], $notes['vehicle'],$notes['chosen_experience']);
                     $result = $calculator->getPolicyPrice();
 
                     $data['text'] = $translation[$notes['lang']]['answer']." $result ₸";
