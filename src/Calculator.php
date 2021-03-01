@@ -69,7 +69,7 @@ class Calculator extends ApiFaker
      */
 
     const BONUS_MALUS = array(
-        М   => 2.45,
+        "M"   => 2.45,
         0   => 2.30,
         1   => 1.55,
         2   => 1.40,
@@ -97,16 +97,16 @@ class Calculator extends ApiFaker
         $yearOld = $dataClient['years_old'];
         $ageAndExperience = 1;
 
-        if ($yearOld < 25 && getExperience() < 2) {
+        if ($yearOld < 25 && getExperience($this->experinceType) < 2) {
             $ageAndExperience = 1.10;
         }
-        if ($yearOld < 25 && getExperience() > 2) {
+        if ($yearOld < 25 && getExperience($this->experinceType) > 2) {
             $ageAndExperience = 1.05;
         }
-        if ($yearOld > 25 && getExperience() < 2) {
+        if ($yearOld > 25 && getExperience($this->experinceType) < 2) {
             $ageAndExperience = 1.05;
         }
-        if ($yearOld > 25 && getExperience() > 2) {
+        if ($yearOld > 25 && getExperience($this->experinceType) > 2) {
             $ageAndExperience = 1.00;
         }
 
@@ -136,15 +136,8 @@ class Calculator extends ApiFaker
         return (self::MRP * 1.9) * $this->getClient() * $this->getVehicle() ;
     }
 
-    public function getExperience(): int
+    public function getExperience($e): int
     {
-        $experience = 1;
-        if ($this->experinceType === 'Менее 2') {
-            $experience  = 1 ;
-        }
-        else {
-            $experience = 3;
-        }
-        return $experience;
+        return 1;
     }
 }

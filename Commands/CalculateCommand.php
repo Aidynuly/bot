@@ -118,15 +118,34 @@ class CalculateCommand extends UserCommand
                     break;
                 }
 
-                $notes['vehicle'] = strtoupper($text);
+
+                if (!in_array($text, [
+                        $translation['ru']['yes'],
+                        $translation['kz']['yes'],
+                        ''
+                    ]) && !Validator::validateVehicleNumber($text)) {
+                    $notes['state'] = 1;
+                    $this->conversation->update();
+
+                    $data['text'] = $translation[$notes['lang']]['vehicle_error']
+                        .PHP_EOL
+                        .$translation[$notes['lang']]['try_again']
+                    ;
+
+                    $result = Request::sendMessage($data);
+                    break;
+                }
+
+                $notes['vehicle'] = mb_strtoupper($text);
                 $text = '';
 
             case 2:
                 if ($text === '') {
                     $notes['state'] = 2;
                     $this->conversation->update();
-                    $data['text'] = 'Выберите стаж вождения/Жүргізу тәжірибесін таңдаңыз';
-                    $data['reply_markup'] = (new Keyboard('Меньше 2 лет','Больше 2 лет'))
+                    $lang = $notes['chosen_lang'] === 'Русский' ? 'ru' : 'kz';
+                    $data['text'] = $translation[$lang]['experience_question'];
+                    $data['reply_markup'] = (new Keyboard($translation[$lang]['experience_more'],$translation[$lang]['experience_less']))
                         ->setResizeKeyboard(true)
                         ->setOneTimeKeyboard(true)
                         ->setSelective(true);
@@ -137,6 +156,8 @@ class CalculateCommand extends UserCommand
 
                 $notes['chosen_experience'] = $text;
                 $text = '';
+
+
 
             case 3:
                 if ($text === '') {
@@ -149,8 +170,7 @@ class CalculateCommand extends UserCommand
 
                     unset($notes['state']);
                     $this->conversation->stop;
-
-                    break;
+                    $this->telegram->executeCommand('send');
                 }
         }
 
