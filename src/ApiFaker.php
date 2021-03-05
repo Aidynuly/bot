@@ -29,9 +29,9 @@ class ApiFaker
     public static function getVehicleData(string $vehicleNumber) : array
     {
         return [
-            'type' => 'Легковые',
+            'type' => 'Р›РµРіРєРѕРІС‹Рµ',
             'year' => 2010,
-            'region' => 'г. Алматы',
+            'region' => 'Рі. РђР»РјР°С‚С‹',
         ];
     }
 }

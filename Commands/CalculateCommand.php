@@ -10,6 +10,7 @@ use Longman\TelegramBot\Conversation;
 use Longman\TelegramBot\Entities\Keyboard;
 use Longman\TelegramBot\Entities\ServerResponse;
 use Longman\TelegramBot\Request;
+use Longman\TelegramBot\Exception\TelegramException;
 
 
 class CalculateCommand extends UserCommand
@@ -48,7 +49,7 @@ class CalculateCommand extends UserCommand
         $chat_id = $chat->getId();
         $user_id = $user->getId();
         $translation = Translation::messages();
-
+        $contact = $message->getContact();
         // Preparing response
         $data = [
             'chat_id'      => $chat_id,
@@ -136,6 +137,7 @@ class CalculateCommand extends UserCommand
                     break;
                 }
 
+
                 $notes['vehicle'] = mb_strtoupper($text);
                 $text = '';
 
@@ -143,13 +145,11 @@ class CalculateCommand extends UserCommand
                 if ($text === '') {
                     $notes['state'] = 2;
                     $this->conversation->update();
-                    $lang = $notes['chosen_lang'] === 'Русский' ? 'ru' : 'kz';
-                    $data['text'] = $translation[$lang]['experience_question'];
-                    $data['reply_markup'] = (new Keyboard($translation[$lang]['experience_more'],$translation[$lang]['experience_less']))
+                    $data['text'] = $translation[$notes['lang']]['experience_question'];
+                    $data['reply_markup'] = (new Keyboard($translation[$notes['lang']]['experience_more'],$translation[$notes['lang']]['experience_less']))
                         ->setResizeKeyboard(true)
                         ->setOneTimeKeyboard(true)
                         ->setSelective(true);
-
                     $result = Request::sendMessage($data);
                     break;
                 }
@@ -157,21 +157,62 @@ class CalculateCommand extends UserCommand
                 $notes['chosen_experience'] = $text;
                 $text = '';
 
-
-
             case 3:
                 if ($text === '') {
-
+                    $notes['state'] = 3;
                     $calculator = new Calculator($notes['iin'], $notes['vehicle'],$notes['chosen_experience']);
                     $result = $calculator->getPolicyPrice();
 
-                    $data['text'] = $translation[$notes['lang']]['answer']." $result ₸";
+
+                    $data['text'] = $translation[$notes['lang']]['answer']." $result tg";
                     $result = Request::sendMessage($data);
 
-                    unset($notes['state']);
-                    $this->conversation->stop;
-                    $this->telegram->executeCommand('send');
                 }
+                $calculator = new Calculator($notes['iin'], $notes['vehicle'],$notes['chosen_experience']);
+                $result = $calculator->getPolicyPrice();
+
+                $notes['result'] = "$result tg";
+                $text = '';
+
+            case 4:
+                if ($text === '') {
+                    $notes['state'] = 4;
+                    $this->conversation->update();
+                    $data['text'] = $translation[$notes['lang']]['number_question'];
+                    $keyboards[] = new Keyboard([
+                        ['text' => $translation[$notes['lang']]['number'], 'request_contact' => true],
+                    ]);
+
+                    $keyboard = end($keyboards)
+                        ->setResizeKeyboard(true)
+                        ->setOneTimeKeyboard(true)
+                        ->setSelective(true);
+
+                    $data['reply_markup'] = $keyboard;
+                    $result = Request::sendMessage($data);
+                    break;
+
+                }
+
+                $notes['contact'] = $text;
+                $text = '';
+
+            case 5:
+                if ($text === '') {
+                    $data['chat_id'] = '500955797';
+                    $data['text'] = $notes['iin']
+                        .PHP_EOL
+                        .$notes['vehicle']
+                        .PHP_EOL
+                        .$notes['contact']
+                        .PHP_EOL
+                        .$notes['result'];
+                    $result = Request::sendMessage($data);
+                    unset($notes['state']);
+                    $this->conversation->stop();
+                }
+
+
         }
 
         return $result;

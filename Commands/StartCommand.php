@@ -81,8 +81,8 @@ class StartCommand extends UserCommand
                     $notes['state'] = 0;
                     $this->conversation->update();
 
-                    $data['text'] = 'Выберите язык/Тілді таңдаңыз';
-                    $data['reply_markup'] = (new Keyboard('Русский', 'Қазақ'))
+                    $data['text'] = 'Р’С‹Р±РµСЂРёС‚Рµ СЏР·С‹Рє/РўС–Р»РґС– С‚Р°ТЈРґР°ТЈС‹Р·';
+                    $data['reply_markup'] = (new Keyboard('Р СѓСЃСЃРєРёР№', 'ТљР°Р·Р°Т›'))
                         ->setResizeKeyboard(true)
                         ->setOneTimeKeyboard(true)
                         ->setSelective(true);
@@ -98,7 +98,7 @@ class StartCommand extends UserCommand
                 if ($text === '') {
                     $notes['state'] = 1;
                     $this->conversation->update();
-                    $lang = $notes['chosen_lang'] === 'Русский' ? 'ru' : 'kz';
+                    $lang = $notes['chosen_lang'] === 'Р СѓСЃСЃРєРёР№' ? 'ru' : 'kz';
                     $data['text'] = $translation[$lang]['greeting']
                         .PHP_EOL
                         .$translation[$lang]['notice']
@@ -114,6 +114,7 @@ class StartCommand extends UserCommand
 
                 $notes['answer'] = $text;
                 $text = '';
+
 
             case 2:
                 unset($notes['state']);

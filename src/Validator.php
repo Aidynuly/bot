@@ -36,25 +36,116 @@ class Validator
      */
     public static function validateVehicleNumber(string $number) : bool
     {
-        $num = strtoupper($number);
-        $onlyDigits = preg_replace('/[^0-9]/', '', $num);
-        $onlyLetters = preg_replace('/[^A-Z]/', '', $num);
+        if (self::matchOldVRP($number)) {
+            return self::matchOldVRP($number);
+        } else if (self::matchNewVrp($number)) {
+            return self::matchNewVrp($number);
+        } else if (self::matchNewMotorcycleVrp($number)) {
+            return self::matchNewMotorcycleVrp($number);
+        } else if (self::matchOldMotorcycleVrp($number)) {
+            return self::matchOldMotorcycleVrp($number);
+        } else if (self::matchTruckVrpNew($number)) {
+            return self::matchTruckVrpNew($number);
+        } else if (self::matchTruckVrpOld($number)) {
+            return self::matchTruckVrpOld($number);
+        } else if (self::matchNewNonResidentVrp($number)) {
+            return self::matchNewNonResidentVrp($number);
+        } else if (self::matchOldNonResidentsVrp($number)) {
+            return self::matchOldNonResidentsVrp($number);
+        } else if (self::matchDiplomaticVrp($number)) {
+            return self::matchDiplomaticVrp($number);
+        } else if (self::matchNewMVD($number)) {
+            return self::matchNewMVD($number);
+        } else if (self::matchOldMVD($number)) {
+            return self::matchOldMVD($number);
+        }
 
-        //Образ 1993
-        if ( strlen($num) <= 7 && $onlyDigits === 3 ) {return true;}
-        if ( strlen($onlyDigits) === 3 && $onlyLetters === "AV") { return true;}
-        if ( strlen($onlyDigits) === 3 && $onlyLetters === "ADM") { return true;}
-        if ( strlen($onlyDigits) === 3 && $onlyLetters === "AST") { return true;}
-        if ( strlen($onlyDigits) === 3 && $onlyLetters === "UD") { return true;}
-        if ( strlen($onlyDigits) === 2 && $onlyLetters === "SK") { return true;}
-        if ( strlen($num <= 6) && $onlyLetters[1] === "N" && $onlyLetters[2] === "NS") { return true;}
-        if ( strlen($num  === 5) && $onlyLetters[1] === "K" && $onlyLetters[2] === "P") {return true;}
-        if ( (strlen($onlyDigits) === 4 && strlen($onlyLetters) === 2) || (strlen($onlyDigits) === 6 && strlen($onlyLetters) === 1)) { return true;}
-        if( $onlyLetters === "CMD" && strlen($onlyDigits) === 4 ) {return true;}
-        //Образ 2012
-        if( strlen($onlyDigits) === 5 && (strlen($onlyLetters) === 2 || strlen($onlyLetters) === 3)) {return true;}
-        if( strlen($onlyDigits) === 6) { return true;}
-        if( strlen($onlyDigits) === 3 && strlen($onlyLetters) === 4 ) return true;
         return false;
     }
+
+
+    public static function matchOldVRP(string $vrp)
+    {
+        $pattern = '/^[a-zA-Z]{1}[0-9]{3}[a-zA-Z]{2,3}$/';
+
+        return preg_match($pattern, $vrp);
+    }
+
+    public static function matchNewVrp(string $vrp)
+    {
+        $pattern = '/^[0-9]{3}[a-zA-Z]{2,3}[0-9]{2}$/';
+
+        return preg_match($pattern, $vrp);
+    }
+
+    public static function matchTruckVrpOld(string $vrp)
+    {
+        $pattern = '/^[0-9]{4}[a-zA-Z]{2}$/';
+
+        return preg_match($pattern, $vrp);
+    }
+
+    public static function matchTruckVrpNew(string $vrp)
+    {
+        $pattern = '/^[0-9]{2}[a-zA-Z]{3}[0-9]{2}$/';
+
+        return preg_match($pattern, $vrp);
+    }
+
+    public static function matchOldMotorcycleVrp(string $vrp)
+    {
+        $pattern = '/^[0-9]{4}[a-zA-Z]{2}$/';
+
+        return preg_match($pattern, $vrp);
+    }
+
+    public static function matchNewMotorcycleVrp(string $vrp)
+    {
+        $pattern = '/^[0-9]{2}[a-zA-Z]{2}[0-9]{2}$/';
+
+        return preg_match($pattern, $vrp);
+    }
+
+    public static function matchOldNonResidentsVrp(string $vrp)
+    {
+        $pattern = '/^[K,M,H,P]{1}[0-9]{6}$/';
+
+        return preg_match($pattern, $vrp);
+    }
+
+    /**
+     * Example: [F or C] 0001 02. Last two digits show region
+     * TODO: Add logic for H to distinguish from old version of VRP
+     *
+     * @param string $vrp
+     * @return int
+     */
+    public static function matchNewNonResidentVrp(string $vrp)
+    {
+        $pattern = '/^[F,C,K,M,D]{1}[0-9]{6}$/';
+
+        return preg_match($pattern, $vrp);
+    }
+
+    public static function matchOldMVD(string $vrp)
+    {
+        $pattern = '/^[a-zA-Z]{1}[0-9]{3}[kK,pP]{2}$/';
+
+        return preg_match($pattern,$vrp);
+    }
+
+    public static function matchNewMVD(string $vrp)
+    {
+        $pattern = '/^[0-9]{6}$/';
+
+        return preg_match($pattern,$vrp);
+    }
+
+    public static function matchDiplomaticVrp(string $vrp)
+    {
+        $pattern = '/^[H]{1}[C]{1}[0-9]{4}$/';
+
+        return preg_match($pattern,$vrp);
+    }
+
 }
