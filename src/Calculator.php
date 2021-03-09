@@ -134,7 +134,6 @@ class Calculator extends ApiFaker
 
     public function getExperience($i): int
     {
-        $experience = 1;
         if ($this->experinceType === 'РњРµРЅРµРµ 2 Р»РµС‚') {
             $experience  = 1 ;
         }

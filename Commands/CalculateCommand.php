@@ -49,7 +49,8 @@ class CalculateCommand extends UserCommand
         $chat_id = $chat->getId();
         $user_id = $user->getId();
         $translation = Translation::messages();
-        $contact = $message->getContact();
+        $first_name = $user->getFirstName();
+        $last_name = $user->getLastName();
         // Preparing response
         $data = [
             'chat_id'      => $chat_id,
@@ -158,23 +159,50 @@ class CalculateCommand extends UserCommand
                 $text = '';
 
             case 3:
+
                 if ($text === '') {
                     $notes['state'] = 3;
                     $calculator = new Calculator($notes['iin'], $notes['vehicle'],$notes['chosen_experience']);
                     $result = $calculator->getPolicyPrice();
 
 
-                    $data['text'] = $translation[$notes['lang']]['answer']." $result tg";
+                    $data['text'] = $translation[$notes['lang']]['answer']." $result в‚ё";
                     $result = Request::sendMessage($data);
 
                 }
+
                 $calculator = new Calculator($notes['iin'], $notes['vehicle'],$notes['chosen_experience']);
                 $result = $calculator->getPolicyPrice();
 
-                $notes['result'] = "$result tg";
+                $notes['result'] = "$result в‚ё";
                 $text = '';
 
             case 4:
+
+                if ($message->getType() === 'contact') {
+                    $notes['state'] = 4;
+                    $data['text'] = $translation[$notes['lang']]['submit_number'];
+                    $result = Request::sendMessage($data);
+                    $notes['phone'] = $message->getContact()->getPhoneNumber();
+                    $data['chat_id'] = '500955797';
+                    $data['text'] = $translation[$notes['lang']]['name'] . $first_name
+                        .PHP_EOL
+                        .$translation[$notes['lang']]['iin'] . $notes['iin']
+                        .PHP_EOL
+                        .$translation[$notes['lang']]['ts'] . $notes['vehicle']
+                        .PHP_EOL
+                        .$translation[$notes['lang']]['summa'] . $notes['result']
+                        .PHP_EOL
+                        .$translation[$notes['lang']]['mobile'] . $notes['phone'];
+                    $result = Request::sendMessage($data);
+                    $data['text'] = $translation[$notes['lang']]['restart'] . "/start";
+                    $result = Request::sendMessage($data);
+
+                    break;
+
+                }
+
+
                 if ($text === '') {
                     $notes['state'] = 4;
                     $this->conversation->update();
@@ -193,25 +221,6 @@ class CalculateCommand extends UserCommand
                     break;
 
                 }
-
-                $notes['contact'] = $text;
-                $text = '';
-
-            case 5:
-                if ($text === '') {
-                    $data['chat_id'] = '500955797';
-                    $data['text'] = $notes['iin']
-                        .PHP_EOL
-                        .$notes['vehicle']
-                        .PHP_EOL
-                        .$notes['contact']
-                        .PHP_EOL
-                        .$notes['result'];
-                    $result = Request::sendMessage($data);
-                    unset($notes['state']);
-                    $this->conversation->stop();
-                }
-
 
         }
 
