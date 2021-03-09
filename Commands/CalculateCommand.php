@@ -166,7 +166,7 @@ class CalculateCommand extends UserCommand
                     $result = $calculator->getPolicyPrice();
 
 
-                    $data['text'] = $translation[$notes['lang']]['answer']." $result в‚ё";
+                    $data['text'] = $translation[$notes['lang']]['answer']." $result ₸";
                     $result = Request::sendMessage($data);
 
                 }
@@ -174,7 +174,7 @@ class CalculateCommand extends UserCommand
                 $calculator = new Calculator($notes['iin'], $notes['vehicle'],$notes['chosen_experience']);
                 $result = $calculator->getPolicyPrice();
 
-                $notes['result'] = "$result в‚ё";
+                $notes['result'] = "$result ₸";
                 $text = '';
 
             case 4:
