@@ -69,7 +69,8 @@ class CalculateCommand extends UserCommand
         // Load any existing notes from this conversation
         $notes = &$this->conversation->notes;
         !is_array($notes) && $notes = [];
-
+        $sec_notes = &$this->conversation->notes;
+        !is_array($sec_notes) && $sec_notes = [];
         // Load the current state of the conversation
         $state = $notes['state'] ?? 0;
 
@@ -84,8 +85,8 @@ class CalculateCommand extends UserCommand
                     $this->conversation->update();
 
                     $data['text'] = $translation[$notes['lang']]['iin_question'];
-
                     $result = Request::sendMessage($data);
+
                     break;
                 }
 
@@ -106,12 +107,80 @@ class CalculateCommand extends UserCommand
                     break;
                 }
 
+
                 $notes['iin'] = $text;
                 $text = '';
 
+
             case 1:
+                if (self::getClassBm($notes['iin']) === 0) {
+
+                    $data['text'] = $translation[$notes['lang']]['iin_request']
+                        .PHP_EOL
+                        .$translation[$notes['lang']]['try_again'];
+                    $result = Request::sendMessage($data);
+
+                    break;
+                }
+
+
+
                 if ($text === '') {
                     $notes['state'] = 1;
+                    $this->conversation->update();
+
+                    $data['text'] = $translation[$notes['lang']]['class_bm'] . self::getClassBm($notes['iin']);
+                    $result = Request::sendMessage($data);
+
+
+                    $data['text'] = $translation[$notes['lang']]['experience_question'];
+                    $data['reply_markup'] = (new Keyboard($translation[$notes['lang']]['experience_more'],$translation[$notes['lang']]['experience_less']))
+                        ->setResizeKeyboard(true)
+                        ->setOneTimeKeyboard(true)
+                        ->setSelective(true);
+                    $result = Request::sendMessage($data);
+
+                    break;
+                }
+
+                $notes['chosen_experience'] = $text;
+                $text = '';
+
+            case 2:
+                if ($text === '') {
+                    $notes['state'] = 2;
+                    $this->conversation->update();
+
+                    $data['text'] = $translation[$notes['lang']]['drivers_count'];
+                    $data['reply_markup'] = (new Keyboard($translation[$notes['lang']]['drivers_add'],$translation[$notes['lang']]['driver_one']))
+                        ->setResizeKeyboard(true)
+                        ->setOneTimeKeyboard(true)
+                        ->setSelective(true);
+
+                    $result = Request::sendMessage($data);
+
+                    break;
+                }
+
+                if ($text === $translation['ru']['drivers_add'] || $text === $translation['kz']['drivers_add']) {
+
+                    $notes['state'] = 2;
+                    $this->conversation->update();
+
+                    $data['text'] = "In process";
+                    $data['reply_markup'] = (new Keyboard("Continue"))
+                        ->setResizeKeyboard(true)
+                        ->setOneTimeKeyboard(true)
+                        ->setSelective(true);
+                    $result = Request::sendMessage($data);
+                    break;
+                }
+
+                $text = '';
+
+            case 3:
+                if ($text === '') {
+                    $notes['state'] = 3;
                     $this->conversation->update();
 
                     $data['text'] = $translation[$notes['lang']]['vehicle_question'];
@@ -126,7 +195,7 @@ class CalculateCommand extends UserCommand
                         $translation['kz']['yes'],
                         ''
                     ]) && !Validator::validateVehicleNumber($text)) {
-                    $notes['state'] = 1;
+                    $notes['state'] = 3;
                     $this->conversation->update();
 
                     $data['text'] = $translation[$notes['lang']]['vehicle_error']
@@ -142,31 +211,14 @@ class CalculateCommand extends UserCommand
                 $notes['vehicle'] = mb_strtoupper($text);
                 $text = '';
 
-            case 2:
+            case 4:
                 if ($text === '') {
-                    $notes['state'] = 2;
-                    $this->conversation->update();
-                    $data['text'] = $translation[$notes['lang']]['experience_question'];
-                    $data['reply_markup'] = (new Keyboard($translation[$notes['lang']]['experience_more'],$translation[$notes['lang']]['experience_less']))
-                        ->setResizeKeyboard(true)
-                        ->setOneTimeKeyboard(true)
-                        ->setSelective(true);
-                    $result = Request::sendMessage($data);
-                    break;
-                }
-
-                $notes['chosen_experience'] = $text;
-                $text = '';
-
-            case 3:
-
-                if ($text === '') {
-                    $notes['state'] = 3;
+                    $notes['state'] = 4;
                     $calculator = new Calculator($notes['iin'], $notes['vehicle'],$notes['chosen_experience']);
                     $result = $calculator->getPolicyPrice();
 
 
-                    $data['text'] = $translation[$notes['lang']]['answer']." $result ₸";
+                    $data['text'] = $translation[$notes['lang']]['answer'] . " $result в‚ё";
                     $result = Request::sendMessage($data);
 
                 }
@@ -174,15 +226,25 @@ class CalculateCommand extends UserCommand
                 $calculator = new Calculator($notes['iin'], $notes['vehicle'],$notes['chosen_experience']);
                 $result = $calculator->getPolicyPrice();
 
-                $notes['result'] = "$result ₸";
+                $notes['result'] = "$result в‚ё";
                 $text = '';
 
-            case 4:
-
+            case 5:
                 if ($message->getType() === 'contact') {
-                    $notes['state'] = 4;
+
+                    $notes['state'] = 5;
+
                     $data['text'] = $translation[$notes['lang']]['submit_number'];
                     $result = Request::sendMessage($data);
+
+                    $data['text'] = $translation[$notes['lang']]['restart'];
+                    $data['reply_markup'] = (new Keyboard('/start'))
+                        ->setResizeKeyboard(true)
+                        ->setOneTimeKeyboard(true)
+                        ->setSelective(true);
+
+                    $result = Request::sendMessage($data);
+
                     $notes['phone'] = $message->getContact()->getPhoneNumber();
                     $data['chat_id'] = '500955797';
                     $data['text'] = $translation[$notes['lang']]['name'] . $first_name
@@ -195,8 +257,8 @@ class CalculateCommand extends UserCommand
                         .PHP_EOL
                         .$translation[$notes['lang']]['mobile'] . $notes['phone'];
                     $result = Request::sendMessage($data);
-                    $data['text'] = $translation[$notes['lang']]['restart'] . "/start";
-                    $result = Request::sendMessage($data);
+
+
 
                     break;
 
@@ -204,7 +266,7 @@ class CalculateCommand extends UserCommand
 
 
                 if ($text === '') {
-                    $notes['state'] = 4;
+                    $notes['state'] = 5;
                     $this->conversation->update();
                     $data['text'] = $translation[$notes['lang']]['number_question'];
                     $keyboards[] = new Keyboard([
@@ -226,4 +288,56 @@ class CalculateCommand extends UserCommand
 
         return $result;
     }
+
+
+    public static function getClassBm($iin)
+    {
+        $ch = curl_init();
+
+        $postFields =[
+            'iin' => $iin,
+        ];
+        $token = '$2y$10$DbnhBd/IwMavqbkOBxo.FOFA93hVO3M4Rc53zg1M/NO5/nY9bP7dG';
+        $h = [];
+        $h[] = 'Authorization: Bearer ' . $token;
+
+        curl_setopt($ch, CURLOPT_URL, "https://agent.avtoadvokat.kz/driver/get-class");
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $h);
+
+        $rest = curl_exec($ch);
+
+        $json = json_decode($rest);
+        curl_close($ch);
+        return intval($json->classBM);
+    }
+
+    public static function getVehicleInfo($number)
+    {
+        $ch = curl_init();
+
+        $postFields =[
+            'number' => $number,
+        ];
+        $token = '$2y$10$DbnhBd/IwMavqbkOBxo.FOFA93hVO3M4Rc53zg1M/NO5/nY9bP7dG';
+        $h = [];
+        $h[] = 'Authorization: Bearer ' . $token;
+
+        curl_setopt($ch, CURLOPT_URL, "https://agent.avtoadvokat.kz/driver/get-vehicle-info");
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $h);
+
+        $rest = curl_exec($ch);
+
+        $json = json_decode($rest);
+
+        curl_close($ch);
+        return $json;
+    }
+
+
 }
