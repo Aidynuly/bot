@@ -81,7 +81,6 @@ class CalculateCommand extends UserCommand
 
         switch ($state) {
             case 0:
-                iin:
                 if ($text === $translation['ru']['yes'] || $text === $translation['kz']['yes'] || $text === '' || $text === $translation['ru']['drivers_add']
                     || $text === $translation['kz']['drivers_add'] ) {
                     $notes['lang'] = $text === $translation['ru']['yes'] ? 'ru' : 'kz' || $text === $translation['ru']['drivers_add'] ? 'ru' : 'kz';
@@ -112,24 +111,19 @@ class CalculateCommand extends UserCommand
                     break;
                 }
 
-
                 $notes['iin'] = $text;
-                array_push($notes['iin_connection'], $notes['iin']);
+                $notes['iin_collection'] = $text;
                 $text = '';
-
-
 
             case 1:
 
-                $obj = ApiFaker::getClientData($notes['iin']);
-                if (intval($obj['bonus_malus']) === 0) {
 
+                if (intval(ApiFaker::getClientData($notes['iin'])['bonus_malus']) === 0) {
                     $data['text'] = $translation[$notes['lang']]['iin_request']
                         .PHP_EOL
                         .$translation[$notes['lang']]['try_again'];
 
                     $result = Request::sendMessage($data);
-
                     break;
                 }
 
@@ -137,11 +131,11 @@ class CalculateCommand extends UserCommand
                     $notes['state'] = 1;
                     $this->conversation->update();
 
-                    $data['text'] = $translation[$notes['lang']]['class_bm'] . $obj['bonus_malus'];
+                    $data['text'] = $translation[$notes['lang']]['class_bm'] . ApiFaker::getClientData($notes['iin'])['bonus_malus'];
                     $result = Request::sendMessage($data);
 
                     $data['text'] = $translation[$notes['lang']]['drivers_count'];
-                    $data['reply_markup'] = (new Keyboard($translation[$notes['lang']]['drivers_add'],$translation[$notes['lang']]['driver_one']))
+                    $data['reply_markup'] = (new Keyboard($translation[$notes['lang']]['drivers_add'], $translation[$notes['lang']]['driver_one']))
                         ->setResizeKeyboard(true)
                         ->setOneTimeKeyboard(true)
                         ->setSelective(true);
@@ -154,9 +148,32 @@ class CalculateCommand extends UserCommand
                     $notes['state'] = 1;
                     $this->conversation->update();
 
-                    goto iin;
+                    $data['text'] = $translation[$notes['lang']]['iin_question'];
+                    $result = Request::sendMessage($data);
+
+                    break;
                 }
 
+
+
+                if (Validator::validateIIN($text)) {
+                    $notes['state'] = 1;
+                    $this->conversation->update();
+
+                    $data['text'] = $translation[$notes['lang']]['class_bm'] . ApiFaker::getClientData($text)['bonus_malus'];
+                    $result = Request::sendMessage($data);
+
+                    $notes['iin_collection'][] = $text;
+                    $data['text'] = $translation[$notes['lang']]['drivers_count'];
+
+                    $data['reply_markup'] = (new Keyboard($translation[$notes['lang']]['drivers_add'],$translation[$notes['lang']]['driver_one']))
+                        ->setResizeKeyboard(true)
+                        ->setOneTimeKeyboard(true)
+                        ->setSelective(true);
+                    $result = Request::sendMessage($data);
+                    break;
+                }
+                $notes['iin_collection'][] = $text;
                 $text = '';
 
 
@@ -180,18 +197,16 @@ class CalculateCommand extends UserCommand
                 $text = '';
 
 
-
             case 3:
-                vehicle:
                 if ($text === '' || $text === $translation['ru']['vehicle_add'] || $text === $translation['kz']['vehicle_add']) {
                     $notes['state'] = 3;
                     $this->conversation->update();
 
                     $data['text'] = $translation[$notes['lang']]['vehicle_question'];
-
                     $result = Request::sendMessage($data);
                     break;
                 }
+
 
                 if (!in_array($text, [
                         $translation['ru']['yes'],
@@ -209,18 +224,14 @@ class CalculateCommand extends UserCommand
                     $result = Request::sendMessage($data);
                     break;
                 }
-
                 $notes['vehicle'] = mb_strtoupper($text);
                 array_push($notes['vehicle_collection'], $notes['vehicle']);
                 $text = '';
 
-
-
             case 4:
-                if ($text === '') {
+                if ($text === '' && count($notes['iin_collection']) === 1 ) {
                     $notes['state'] = 4;
                     $this->conversation->update();
-
 
                     $data['text'] = $translation[$notes['lang']]['vehicles_count'];
                     $data['reply_markup'] = (new Keyboard($translation[$notes['lang']]['vehicle_add'],$translation[$notes['lang']]['vehicle_one']))
@@ -233,18 +244,36 @@ class CalculateCommand extends UserCommand
                 }
 
                 if ($text === $translation['ru']['vehicle_add'] || $text === $translation['kz']['vehicle_add']) {
-                    $notes['state'] = 3;
+                    $notes['state'] = 4;
                     $this->conversation->update();
-                    goto vehicle;
 
+                    $data['text'] = $translation[$notes['lang']]['vehicle_question'];
+                    $result = Request::sendMessage($data);
+
+                    break;
                 }
 
+                if (Validator::validateVehicleNumber($text)) {
+                    $notes['state'] = 4;
+                    $this->conversation->update();
+
+                    $data['text'] = $translation[$notes['lang']]['vehicles_count'];
+                    $data['reply_markup'] = (new Keyboard($translation[$notes['lang']]['vehicle_add'],$translation[$notes['lang']]['vehicle_one']))
+                        ->setResizeKeyboard(true)
+                        ->setOneTimeKeyboard(true)
+                        ->setSelective(true);
+                    $result = Request::sendMessage($data);
+
+                    break;
+                }
+
+                array_push($notes['vehicle_collection'], $text);
                 $text = '';
+
 
             case 5:
                 if ($text === '') {
                     $notes['state'] = 5;
-                    //$notes['iin'] = self::checkClass(self::getClassBm($notes['iin_collection']), $notes['iin_collection']);
                     $calculator = new Calculator($notes['iin'], $notes['vehicle'], $notes['chosen_experience']);
                     $result = $calculator->getPolicyPrice();
 
@@ -332,5 +361,6 @@ class CalculateCommand extends UserCommand
             }
         }
     }
+
 
 }
