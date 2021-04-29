@@ -74,9 +74,6 @@ class CalculateCommand extends UserCommand
         !is_array($sec_notes) && $sec_notes = [];
         // Load the current state of the conversation
         $state = $notes['state'] ?? 0;
-        $notes['iin_collection'] = [];
-        $notes['vehicle_collection'] = [];
-
         $result = Request::emptyResponse();
 
         switch ($state) {
@@ -90,7 +87,6 @@ class CalculateCommand extends UserCommand
 
                     $data['text'] = $translation[$notes['lang']]['iin_question'];
                     $result = Request::sendMessage($data);
-
                     break;
                 }
 
@@ -111,28 +107,41 @@ class CalculateCommand extends UserCommand
                     break;
                 }
 
+                $notes['iin_collection'] = [];
                 $notes['iin'] = $text;
-                $notes['iin_collection'] = $text;
+                array_push($notes['iin_collection'], $text);
                 $text = '';
 
+
             case 1:
-
-
-                if (intval(ApiFaker::getClientData($notes['iin'])['bonus_malus']) === 0) {
-                    $data['text'] = $translation[$notes['lang']]['iin_request']
-                        .PHP_EOL
-                        .$translation[$notes['lang']]['try_again'];
-
-                    $result = Request::sendMessage($data);
-                    break;
-                }
+                $obj = ApiFaker::getClientData($notes['iin']);
 
                 if ($text === '') {
                     $notes['state'] = 1;
                     $this->conversation->update();
 
-                    $data['text'] = $translation[$notes['lang']]['class_bm'] . ApiFaker::getClientData($notes['iin'])['bonus_malus'];
+                    $data['text'] = $translation[$notes['lang']]['class_bm'] . $obj['bonus_malus'];
                     $result = Request::sendMessage($data);
+
+                    $data['text'] = $translation[$notes['lang']]['experience_question'];
+                    $data['reply_markup'] = (new Keyboard($translation[$notes['lang']]['experience_more'], $translation[$notes['lang']]['experience_less']))
+                        ->setResizeKeyboard(true)
+                        ->setOneTimeKeyboard(true)
+                        ->setSelective(true);
+
+                    $result = Request::sendMessage($data);
+
+
+                    break;
+                }
+
+                $notes['chosen_experience'] = $text;
+                $text = '';
+
+            case 2:
+                if ($text === '') {
+                    $notes['state'] = 2;
+                    $this->conversation->update();
 
                     $data['text'] = $translation[$notes['lang']]['drivers_count'];
                     $data['reply_markup'] = (new Keyboard($translation[$notes['lang']]['drivers_add'], $translation[$notes['lang']]['driver_one']))
@@ -144,8 +153,8 @@ class CalculateCommand extends UserCommand
                     break;
                 }
 
-                if ($text === $translation['ru']['drivers_add'] || $text === $translation['kz']['drivers_add']) {
-                    $notes['state'] = 1;
+                if ($text === $translation[$notes['lang']]['drivers_add']) {
+                    $notes['state'] = 2;
                     $this->conversation->update();
 
                     $data['text'] = $translation[$notes['lang']]['iin_question'];
@@ -154,16 +163,12 @@ class CalculateCommand extends UserCommand
                     break;
                 }
 
-
-
                 if (Validator::validateIIN($text)) {
-                    $notes['state'] = 1;
+                    $notes['state'] = 2;
                     $this->conversation->update();
 
                     $data['text'] = $translation[$notes['lang']]['class_bm'] . ApiFaker::getClientData($text)['bonus_malus'];
                     $result = Request::sendMessage($data);
-
-                    $notes['iin_collection'][] = $text;
                     $data['text'] = $translation[$notes['lang']]['drivers_count'];
 
                     $data['reply_markup'] = (new Keyboard($translation[$notes['lang']]['drivers_add'],$translation[$notes['lang']]['driver_one']))
@@ -171,34 +176,15 @@ class CalculateCommand extends UserCommand
                         ->setOneTimeKeyboard(true)
                         ->setSelective(true);
                     $result = Request::sendMessage($data);
-                    break;
-                }
-                $notes['iin_collection'][] = $text;
-                $text = '';
-
-
-            case 2:
-                if ($text === '') {
-                    $notes['state'] = 2;
-                    $this->conversation->update();
-
-                    $data['text'] = $translation[$notes['lang']]['experience_question'];
-                    $data['reply_markup'] = (new Keyboard($translation[$notes['lang']]['experience_more'], $translation[$notes['lang']]['experience_less']))
-                        ->setResizeKeyboard(true)
-                        ->setOneTimeKeyboard(true)
-                        ->setSelective(true);
-
-                    $result = Request::sendMessage($data);
 
                     break;
                 }
 
-                $notes['chosen_experience'] = $text;
+                array_push($notes['iin_collection'], $text);
                 $text = '';
-
 
             case 3:
-                if ($text === '' || $text === $translation['ru']['vehicle_add'] || $text === $translation['kz']['vehicle_add']) {
+                if ($text === '') {
                     $notes['state'] = 3;
                     $this->conversation->update();
 
@@ -224,81 +210,77 @@ class CalculateCommand extends UserCommand
                     $result = Request::sendMessage($data);
                     break;
                 }
+
+
                 $notes['vehicle'] = mb_strtoupper($text);
-                array_push($notes['vehicle_collection'], $notes['vehicle']);
                 $text = '';
 
             case 4:
-                if ($text === '' && count($notes['iin_collection']) === 1 ) {
-                    $notes['state'] = 4;
-                    $this->conversation->update();
-
-                    $data['text'] = $translation[$notes['lang']]['vehicles_count'];
-                    $data['reply_markup'] = (new Keyboard($translation[$notes['lang']]['vehicle_add'],$translation[$notes['lang']]['vehicle_one']))
-                        ->setResizeKeyboard(true)
-                        ->setOneTimeKeyboard(true)
-                        ->setSelective(true);
-                    $result = Request::sendMessage($data);
-
-                    break;
-                }
-
-                if ($text === $translation['ru']['vehicle_add'] || $text === $translation['kz']['vehicle_add']) {
-                    $notes['state'] = 4;
-                    $this->conversation->update();
-
-                    $data['text'] = $translation[$notes['lang']]['vehicle_question'];
-                    $result = Request::sendMessage($data);
-
-                    break;
-                }
-
-                if (Validator::validateVehicleNumber($text)) {
-                    $notes['state'] = 4;
-                    $this->conversation->update();
-
-                    $data['text'] = $translation[$notes['lang']]['vehicles_count'];
-                    $data['reply_markup'] = (new Keyboard($translation[$notes['lang']]['vehicle_add'],$translation[$notes['lang']]['vehicle_one']))
-                        ->setResizeKeyboard(true)
-                        ->setOneTimeKeyboard(true)
-                        ->setSelective(true);
-                    $result = Request::sendMessage($data);
-
-                    break;
-                }
-
-                array_push($notes['vehicle_collection'], $text);
-                $text = '';
-
-
-            case 5:
                 if ($text === '') {
-                    $notes['state'] = 5;
+                    $notes['state'] = 4;
+                    $this->conversation->update();
+                    //$notes['iin'] = self::checkClass(self::getClassBm($notes['iin_collection']), $notes['iin_collection']);
                     $calculator = new Calculator($notes['iin'], $notes['vehicle'], $notes['chosen_experience']);
                     $result = $calculator->getPolicyPrice();
 
-                    $data['text'] = $translation[$notes['lang']]['answer'] . " $result  ₸"
+
+                    $data['text'] = $translation[$notes['lang']]['answer'] . " $result ₸"
                         .PHP_EOL
                         .$translation[$notes['lang']]['data'];
-
                     $result = Request::sendMessage($data);
 
+                    $data['text'] = $translation[$notes['lang']]['bonus'];
+                    $data['reply_markup'] = (new Keyboard($translation[$notes['lang']]['yes'], $translation[$notes['lang']]['no']))
+                        ->setResizeKeyboard(true)
+                        ->setOneTimeKeyboard(true)
+                        ->setSelective(true);
+                    $result = Request::sendMessage($data);
+
+                    break;
                 }
 
                 $calculator = new Calculator($notes['iin'], $notes['vehicle'], $notes['chosen_experience']);
                 $result = $calculator->getPolicyPrice();
                 $notes['result'] = $result;
-                $text = '';
 
-            case 6:
+            case 5:
+                if ($text === $translation[$notes['lang']]['yes']) {
+                    $notes['state'] = 5;
+                    $this->conversation->update();
+                    $data['text'] = $translation[$notes['lang']]['number_question'];
+                    $keyboards[] = new Keyboard([
+                        ['text' => $translation[$notes['lang']]['number'], 'request_contact' => true],
+                    ]);
+
+                    $keyboard = end($keyboards)
+                        ->setResizeKeyboard(true)
+                        ->setOneTimeKeyboard(true)
+                        ->setSelective(true);
+                    $data['reply_markup'] = $keyboard;
+                    $result = Request::sendMessage($data);
+
+                    break;
+                }
+
                 if ($message->getType() === 'contact') {
+                    $notes['state'] = 5;
+                    $this->conversation->update();
+                    $data['text'] = $translation[$notes['lang']]['thanks_manager'];
+                    $result = Request::sendMessage($data);
 
-                    $notes['state'] = 6;
+                    $data['text'] = $translation[$notes['lang']]['bonus_pdf'];
+                    $result = Request::sendMessage($data);
 
-                    $data['text'] = $translation[$notes['lang']]['submit_number'];
+                    $data['text'] = $translation[$notes['lang']]['upload_table'];
+                    $result = Request::sendMessage($data);
+
+                    $data['text'] = $translation[$notes['lang']]['instagram']
+                        .PHP_EOL
+                        ."https://www.instagram.com/avtoadvokat.kz/";
                     $result = Request::sendMessage($data);
 
                     $data['text'] = $translation[$notes['lang']]['restart'];
+
                     $data['reply_markup'] = (new Keyboard('/start'))
                         ->setResizeKeyboard(true)
                         ->setOneTimeKeyboard(true)
@@ -314,18 +296,49 @@ class CalculateCommand extends UserCommand
                         .PHP_EOL
                         .$translation[$notes['lang']]['ts'] . $notes['vehicle']
                         .PHP_EOL
-                        .$translation[$notes['lang']]['summa'] . $notes['result'] . " ₸"
+                        .$translation[$notes['lang']]['summa'] . $notes['result'] . "₸"
                         .PHP_EOL
-                        .$translation[$notes['lang']]['mobile'] . $notes['phone'];
+                        .$translation[$notes['lang']]['mobile'] . $notes['phone']
+                        .PHP_EOL
+                        .count($notes['iin_collection']);
+                    $result = Request::sendMessage($data);
+
+                    break;
+
+                }
+
+                if ($text === $translation[$notes['lang']]['no']) {
+                    $notes['state'] = 5;
+                    $this->conversation->update();
+                    $data['text'] = $translation[$notes['lang']]['table_gif'];
+                    $data['reply_markup'] = (new Keyboard($translation[$notes['lang']]['yes_without'], $translation[$notes['lang']]['no_without']))
+                        ->setResizeKeyboard(true)
+                        ->setOneTimeKeyboard(true)
+                        ->setSelective(true);
                     $result = Request::sendMessage($data);
 
                     break;
                 }
 
-                if ($text === '') {
+
+            case 6:
+                if ($text === $translation[$notes['lang']]['no_without']) {
                     $notes['state'] = 6;
                     $this->conversation->update();
-                    $data['text'] = $translation[$notes['lang']]['number_question'];
+
+                    $data['text'] = $translation[$notes['lang']]['instagram']
+                        .PHP_EOL
+                        ."https://www.instagram.com/avtoadvokat.kz/";
+                    $result = Request::sendMessage($data);
+
+                    break;
+                }
+
+                if ($text === $translation[$notes['lang']]['yes_without']) {
+                    $notes['state'] = 6;
+                    $this->conversation->update();
+
+                    $data['text'] = $translation[$notes['lang']]['number_table'];
                     $keyboards[] = new Keyboard([
                         ['text' => $translation[$notes['lang']]['number'], 'request_contact' => true],
                     ]);
@@ -334,14 +347,41 @@ class CalculateCommand extends UserCommand
                         ->setResizeKeyboard(true)
                         ->setOneTimeKeyboard(true)
                         ->setSelective(true);
-
                     $data['reply_markup'] = $keyboard;
                     $result = Request::sendMessage($data);
                     break;
                 }
 
-        }
+                if ($message->getType() === 'contact') {
+                    $notes['state'] = 6;
+                    $this->conversation->update();
+                    $data['text'] = $translation[$notes['lang']]['upload_table'];
+                    $result = Request::sendMessage($data);
 
+                    $data['text'] = $translation[$notes['lang']]['instagram']
+                        .PHP_EOL
+                        ."https://www.instagram.com/avtoadvokat.kz/";
+                    $result = Request::sendMessage($data);
+
+
+                    $notes['phone'] = $message->getContact()->getPhoneNumber();
+                    $data['chat_id'] = '500955797';
+                    $data['text'] = $translation[$notes['lang']]['name'] . $first_name
+                        .PHP_EOL
+                        .$translation[$notes['lang']]['iin'] . $notes['iin']
+                        .PHP_EOL
+                        .$translation[$notes['lang']]['ts'] . $notes['vehicle']
+                        .PHP_EOL
+                        .$translation[$notes['lang']]['summa'] . $notes['result'] . " ₸"
+                        .PHP_EOL
+                        .$translation[$notes['lang']]['mobile'] . $notes['phone']
+                        .PHP_EOL
+                        .count($notes['iin_collection']);
+                    $result = Request::sendMessage($data);
+
+                    break;
+                }
+        }
         return $result;
     }
 
@@ -361,6 +401,5 @@ class CalculateCommand extends UserCommand
             }
         }
     }
-
 
 }
