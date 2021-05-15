@@ -78,15 +78,15 @@ class CalculateCommand extends UserCommand
 
         switch ($state) {
             case 0:
-                if ($text === $translation['ru']['yes'] || $text === $translation['kz']['yes'] || $text === '' || $text === $translation['ru']['drivers_add']
-                    || $text === $translation['kz']['drivers_add'] ) {
-                    $notes['lang'] = $text === $translation['ru']['yes'] ? 'ru' : 'kz' || $text === $translation['ru']['drivers_add'] ? 'ru' : 'kz';
+                if ($text === $translation['ru']['yes'] || $text === $translation['kz']['yes'] || $text === '') {
+                    $notes['lang'] = $text === $translation['ru']['yes'] ? 'ru' : 'kz';
 
                     $notes['state'] = 0;
                     $this->conversation->update();
 
                     $data['text'] = $translation[$notes['lang']]['iin_question'];
                     $result = Request::sendMessage($data);
+
                     break;
                 }
 
@@ -108,10 +108,11 @@ class CalculateCommand extends UserCommand
                 }
 
                 $notes['iin_collection'] = [];
+                $notes['experience_collection'] = [];
+                $notes['prices'] = [];
                 $notes['iin'] = $text;
                 array_push($notes['iin_collection'], $text);
                 $text = '';
-
 
             case 1:
                 $obj = ApiFaker::getClientData($notes['iin']);
@@ -131,11 +132,11 @@ class CalculateCommand extends UserCommand
 
                     $result = Request::sendMessage($data);
 
-
                     break;
                 }
 
                 $notes['chosen_experience'] = $text;
+                array_push($notes['experience_collection'], $text);
                 $text = '';
 
             case 2:
@@ -163,24 +164,53 @@ class CalculateCommand extends UserCommand
                     break;
                 }
 
+                if (in_array($text, $notes['iin_collection']) && Validator::validateIIN($text)) {
+                    $notes['state'] = 2;
+                    $this->conversation->update();
+
+                    $data['text'] = $translation[$notes['lang']]['repeat_iin']
+                        .PHP_EOL
+                        .$translation[$notes['lang']]['try_again'];
+                    $result = Request::sendMessage($data);
+
+                    break;
+                }
+
                 if (Validator::validateIIN($text)) {
+                    array_push($notes['iin_collection'], $text);
                     $notes['state'] = 2;
                     $this->conversation->update();
 
                     $data['text'] = $translation[$notes['lang']]['class_bm'] . ApiFaker::getClientData($text)['bonus_malus'];
                     $result = Request::sendMessage($data);
+
+                    $data['text'] = $translation[$notes['lang']]['experience_question'];
+                    $data['reply_markup'] = (new Keyboard($translation[$notes['lang']]['experience_more'], $translation[$notes['lang']]['experience_less']))
+                        ->setResizeKeyboard(true)
+                        ->setOneTimeKeyboard(true)
+                        ->setSelective(true);
+
+                    $result = Request::sendMessage($data);
+
+                    break;
+                }
+
+                if ($text === $translation[$notes['lang']]['experience_more'] || $text === $translation[$notes['lang']]['experience_less']) {
+                    array_push($notes['experience_collection'], $text);
+                    $notes['state'] = 2;
+                    $this->conversation->update();
+
                     $data['text'] = $translation[$notes['lang']]['drivers_count'];
 
                     $data['reply_markup'] = (new Keyboard($translation[$notes['lang']]['drivers_add'],$translation[$notes['lang']]['driver_one']))
                         ->setResizeKeyboard(true)
                         ->setOneTimeKeyboard(true)
                         ->setSelective(true);
-                    $result = Request::sendMessage($data);
 
+                    $result = Request::sendMessage($data);
                     break;
                 }
 
-                array_push($notes['iin_collection'], $text);
                 $text = '';
 
             case 3:
@@ -219,10 +249,12 @@ class CalculateCommand extends UserCommand
                 if ($text === '') {
                     $notes['state'] = 4;
                     $this->conversation->update();
-                    //$notes['iin'] = self::checkClass(self::getClassBm($notes['iin_collection']), $notes['iin_collection']);
-                    $calculator = new Calculator($notes['iin'], $notes['vehicle'], $notes['chosen_experience']);
-                    $result = $calculator->getPolicyPrice();
 
+                    for ($i = 0; $i < count($notes['iin_collection']); $i++) {
+                        $res = new Calculator($notes['iin_collection'][$i], $notes['vehicle'], $notes['experience_collection'][$i]);
+                        array_push($notes['prices'], $res->getPolicyPrice());
+                    }
+                    $result = max($notes['prices']);
 
                     $data['text'] = $translation[$notes['lang']]['answer'] . " $result ₸"
                         .PHP_EOL
@@ -239,8 +271,12 @@ class CalculateCommand extends UserCommand
                     break;
                 }
 
-                $calculator = new Calculator($notes['iin'], $notes['vehicle'], $notes['chosen_experience']);
-                $result = $calculator->getPolicyPrice();
+                for ($i = 0; $i < count($notes['iin_collection']); $i++) {
+                    $res = new Calculator($notes['iin_collection'][$i], $notes['vehicle'], $notes['experience_collection'][$i]);
+                    array_push($notes['prices'], $res->getPolicyPrice());
+                }
+
+                $result = max($notes['prices']);
                 $notes['result'] = $result;
 
             case 5:
@@ -248,6 +284,7 @@ class CalculateCommand extends UserCommand
                     $notes['state'] = 5;
                     $this->conversation->update();
                     $data['text'] = $translation[$notes['lang']]['number_question'];
+
                     $keyboards[] = new Keyboard([
                         ['text' => $translation[$notes['lang']]['number'], 'request_contact' => true],
                     ]);
@@ -274,6 +311,14 @@ class CalculateCommand extends UserCommand
                     $data['text'] = $translation[$notes['lang']]['upload_table'];
                     $result = Request::sendMessage($data);
 
+                    $doc_url = "https://telegram.avtoadvokat.kz/Commands/doc/table.pdf";
+                    $result = Request::sendDocument([
+                        'chat_id'   =>  $chat_id,
+                        'document' => $doc_url,
+                        'caption'  => "Таблица Штрафов ПДД2021",
+                    ]);
+
+
                     $data['text'] = $translation[$notes['lang']]['instagram']
                         .PHP_EOL
                         ."https://www.instagram.com/avtoadvokat.kz/";
@@ -290,7 +335,11 @@ class CalculateCommand extends UserCommand
 
                     $notes['phone'] = $message->getContact()->getPhoneNumber();
                     $data['chat_id'] = '500955797';
-                    $data['text'] = $translation[$notes['lang']]['name'] . $first_name
+                    // $data['chat_id'] = '387734812';
+                    // $data['chat_id'] = '821722889' Arkhattt;
+                    $data['text'] = "На боте АвтоАдвокат произведен расчет полиса"
+                        .PHP_EOL
+                        .$translation[$notes['lang']]['name'] . $first_name
                         .PHP_EOL
                         .$translation[$notes['lang']]['iin'] . $notes['iin']
                         .PHP_EOL
@@ -298,9 +347,7 @@ class CalculateCommand extends UserCommand
                         .PHP_EOL
                         .$translation[$notes['lang']]['summa'] . $notes['result'] . "₸"
                         .PHP_EOL
-                        .$translation[$notes['lang']]['mobile'] . $notes['phone']
-                        .PHP_EOL
-                        .count($notes['iin_collection']);
+                        .$translation[$notes['lang']]['mobile'] . $notes['phone'];
                     $result = Request::sendMessage($data);
 
                     break;
@@ -358,6 +405,13 @@ class CalculateCommand extends UserCommand
                     $data['text'] = $translation[$notes['lang']]['upload_table'];
                     $result = Request::sendMessage($data);
 
+                    $doc_url = "https://telegram.avtoadvokat.kz/Commands/doc/table.pdf";
+                    $result = Request::sendDocument([
+                        'chat_id'   =>  $chat_id,
+                        'document' => $doc_url,
+                        'caption'  => "Таблица Штрафов ПДД2021",
+                    ]);
+
                     $data['text'] = $translation[$notes['lang']]['instagram']
                         .PHP_EOL
                         ."https://www.instagram.com/avtoadvokat.kz/";
@@ -366,17 +420,18 @@ class CalculateCommand extends UserCommand
 
                     $notes['phone'] = $message->getContact()->getPhoneNumber();
                     $data['chat_id'] = '500955797';
-                    $data['text'] = $translation[$notes['lang']]['name'] . $first_name
+                    $data['text'] = "На боте АвтоАдвокат произведен расчет полиса"
+                        .PHP_EOL
+                        .$translation[$notes['lang']]['name'] . $first_name
                         .PHP_EOL
                         .$translation[$notes['lang']]['iin'] . $notes['iin']
                         .PHP_EOL
                         .$translation[$notes['lang']]['ts'] . $notes['vehicle']
                         .PHP_EOL
-                        .$translation[$notes['lang']]['summa'] . $notes['result'] . " ₸"
+                        .$translation[$notes['lang']]['summa'] . $notes['result'] . "₸"
                         .PHP_EOL
-                        .$translation[$notes['lang']]['mobile'] . $notes['phone']
-                        .PHP_EOL
-                        .count($notes['iin_collection']);
+                        .$translation[$notes['lang']]['mobile'] . $notes['phone'];
+
                     $result = Request::sendMessage($data);
 
                     break;
@@ -384,22 +439,4 @@ class CalculateCommand extends UserCommand
         }
         return $result;
     }
-
-    public static function getClassBm($arr)
-    {
-        $classes = [];
-        for ($i = 0; $i < count($arr); $i++) {
-            array_push($classes, ApiFaker::getClientData($arr[$i])['bonus_malus']);
-        }
-        return min($classes);
-    }
-
-    public static function checkClass($class, $arr) {
-        for ($i = 0; $i < count($arr); $i++) {
-            if (ApiFaker::getClientData($arr[$i])['bonus_malus'] === $class) {
-                return $arr[$i];
-            }
-        }
-    }
-
 }
